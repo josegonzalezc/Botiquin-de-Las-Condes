@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import android.provider.SyncStateContract;
 import android.util.Log;
@@ -29,6 +30,7 @@ import org.jsoup.select.Elements;
 
 import cl.uilabs.botiquindelascondes.listeners.VolleyStringCallback;
 import cl.uilabs.botiquindelascondes.models.Medicamento;
+import cl.uilabs.botiquindelascondes.db.InsertMedicamentosTask;
 
 
 /**
@@ -68,7 +70,7 @@ public class VolleyGetElements {
         queue.add(jsonObjectRequest);
     }
 
-    public static void parseResponse(String response,ArrayList<Medicamento> medicamentoArrayList)
+    public static void parseResponse(String response,ArrayList<Medicamento> medicamentoArrayList,Context context)
     {
 
         List<Medicamento> medicamentosList = new ArrayList<Medicamento>();
@@ -91,6 +93,14 @@ public class VolleyGetElements {
             m.setPrecio_rebajado(cols.get(4).text());
             medicamentosList.add(m);
 
+            try {
+                new InsertMedicamentosTask (m,context).execute().get();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.i("MED","INSERT");
         }
 
         medicamentoArrayList.clear();

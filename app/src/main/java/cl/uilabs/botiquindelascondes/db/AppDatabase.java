@@ -19,13 +19,13 @@ public abstract class AppDatabase extends RoomDatabase {
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
             INSTANCE =
-                    Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class, "app_db")
+                    Room.databaseBuilder(context, AppDatabase.class, "user_db")
                             .build();
         }
         return INSTANCE;
     }
 
-    public abstract MedicamentoDAO lessonDAO();
+    public abstract MedicamentoDAO medicamentoDAO();
 
     //TODO Add MedicamentoListViewModel with AsyncTasks to query the DB
 }

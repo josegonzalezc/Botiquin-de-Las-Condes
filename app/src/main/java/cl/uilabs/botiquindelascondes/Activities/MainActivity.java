@@ -37,6 +37,7 @@ import com.google.android.gms.security.ProviderInstaller;
 
 import cl.uilabs.botiquindelascondes.R;
 import cl.uilabs.botiquindelascondes.Requests.VolleyGetElements;
+import cl.uilabs.botiquindelascondes.db.GetMedicamentosTask;
 import cl.uilabs.botiquindelascondes.listeners.VolleyStringCallback;
 import cl.uilabs.botiquindelascondes.models.Connectivity;
 import cl.uilabs.botiquindelascondes.models.Medicamento;
@@ -51,6 +52,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.zip.Inflater;
 
 import static java.security.AccessController.getContext;
@@ -63,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar pb;
     private SwipeRefreshLayout swipeRefreshLayout;
     private Activity mainActivity;
+    private Context mainContext;
 
 
     @Override
@@ -73,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         mainActivity = this;
+        mainContext = getApplicationContext();
 
         medicamentos_listview_List = (ListView) findViewById(R.id.medicamentos_list);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_medicamentos);
@@ -96,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
                         //mTextView.setText("Response is: "+ response);
 
                         final String finalResult = result;
-                        VolleyGetElements.parseResponse(finalResult,medicamentosList);
+                        VolleyGetElements.parseResponse(finalResult,medicamentosList,mainContext);
                         mainActivity.runOnUiThread(new Runnable() {
                                                          @Override
                                                          public void run() {
@@ -115,8 +119,29 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onErrorResponse(VolleyError result) {
-                        Toast.makeText(getApplicationContext(),"No se pudo cargar la lista",Toast.LENGTH_LONG).show();
-                        Log.i("VOLLEY","ERROR");
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    medicamentosList = (ArrayList<Medicamento>) new GetMedicamentosTask(mainContext).execute().get();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                } catch (ExecutionException e) {
+                                    e.printStackTrace();
+                                }
+
+                                mainActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        medicamentosAdapter = new MedicamentosAdapter(getApplicationContext(), medicamentosList);
+                                        medicamentos_listview_List.setAdapter(medicamentosAdapter);
+                                        Log.i("VOLLEY", "TERMINE");
+                                        Toast.makeText(MainActivity.this, "No hay conexión, usando base de datos local.", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+
+                            }
+                        }).start();
 
 
                     }
@@ -235,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
                                     new Thread(new Runnable() {
                                         @Override
                                         public void run() {
-                                            VolleyGetElements.parseResponse(finalResult, medicamentosList);
+                                            VolleyGetElements.parseResponse(finalResult, medicamentosList,mainContext);
 
                                             mainActivity.runOnUiThread(new Runnable() {
                                                 @Override
@@ -253,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 @Override
                                 public void onErrorResponse(VolleyError result) {
-                                    //Toast.makeText(getApplicationContext(), "No se pudo cargar la lista", Toast.LENGTH_LONG).show();
+                                    Toast.makeText(getApplicationContext(), "No se pudo actualizar. Revisa tu conexión a internet.", Toast.LENGTH_LONG).show();
                                     Log.i("VOLLEY", "ERROR");
 
 
@@ -262,6 +287,30 @@ public class MainActivity extends AppCompatActivity {
                     swipeRefreshLayout.setRefreshing(false);
                 }
                 else {
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                medicamentosList = (ArrayList<Medicamento>) new GetMedicamentosTask(mainContext).execute().get();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            } catch (ExecutionException e) {
+                                e.printStackTrace();
+                            }
+
+                            mainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    medicamentosAdapter = new MedicamentosAdapter(getApplicationContext(), medicamentosList);
+                                    medicamentos_listview_List.setAdapter(medicamentosAdapter);
+                                    Log.i("VOLLEY", "TERMINE");
+                                    Toast.makeText(MainActivity.this, "No hay conexión, utilizando base de datos local.", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+
+                        }
+                    }).start();
+                    swipeRefreshLayout.setRefreshing(false);
 
                 }
             }

@@ -37,6 +37,6 @@ public interface MedicamentoDAO {
     @Delete
     void deleteMedicamento(Medicamento medicamento);
 
-    @Query("DELETE FROM Lesson")
+    @Query("DELETE FROM Medicamento")
     void nukeTable();
 }
