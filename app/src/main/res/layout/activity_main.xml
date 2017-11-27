@@ -24,9 +24,19 @@
 
     </android.support.design.widget.AppBarLayout>
 
-<ListView
-    android:id="@+id/medicamentos_list"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="10dp"/>
+    <android.support.v4.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/swipe_refresh_medicamentos"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ListView
+            android:id="@+id/medicamentos_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"/>
+    </android.support.v4.widget.SwipeRefreshLayout>
+
+
+
+
 </LinearLayout>
