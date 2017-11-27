@@ -7,8 +7,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.os.Handler;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -35,6 +38,7 @@ import com.google.android.gms.security.ProviderInstaller;
 import cl.uilabs.botiquindelascondes.R;
 import cl.uilabs.botiquindelascondes.Requests.VolleyGetElements;
 import cl.uilabs.botiquindelascondes.listeners.VolleyStringCallback;
+import cl.uilabs.botiquindelascondes.models.Connectivity;
 import cl.uilabs.botiquindelascondes.models.Medicamento;
 
 import android.view.*;
@@ -49,12 +53,16 @@ import org.jsoup.select.Elements;
 import java.util.ArrayList;
 import java.util.zip.Inflater;
 
+import static java.security.AccessController.getContext;
+
 public class MainActivity extends AppCompatActivity {
 
     ArrayList<Medicamento> medicamentosList;
     MedicamentosAdapter medicamentosAdapter;
     private ListView medicamentos_listview_List;
     private ProgressBar pb;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private Activity mainActivity;
 
 
     @Override
@@ -64,53 +72,44 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        mainActivity = this;
 
         medicamentos_listview_List = (ListView) findViewById(R.id.medicamentos_list);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_medicamentos);
         medicamentosList=new ArrayList<Medicamento>();
-
-
+        setSwipeRefreshLayout();
 
         updateAndroidSecurityProvider(this);
 
         //Toast.makeText(getApplicationContext(),"Obteniendo medicamentos...",Toast.LENGTH_SHORT).show();
-        new Runnable(){
+        new Thread(new Runnable(){
             @Override
             public void run()
             {
 
-                Toast.makeText(MainActivity.this,"Obteniendo medicamentos...",Toast.LENGTH_SHORT);
-
+                //Toast.makeText(MainActivity.this,"Obteniendo medicamentos...",Toast.LENGTH_SHORT);
+                Log.i("REQ","Obtiendo medicamentos..");
 
                 VolleyGetElements.volleyGetElements(new VolleyStringCallback() {
                     @Override
                     public void onSuccess(String result) {
                         //mTextView.setText("Response is: "+ response);
-                        Document js = Jsoup.parse(result);
-                        Elements child = js.select("table#medicamentos");
 
-                        ArrayList<String> downServers = new ArrayList<>();
-                        Element table = js.select("table#medicamentos").first();
-                        child = null;//select the first table.
-                        Elements rows = table.select("tr");
+                        final String finalResult = result;
+                        VolleyGetElements.parseResponse(finalResult,medicamentosList);
+                        mainActivity.runOnUiThread(new Runnable() {
+                                                         @Override
+                                                         public void run() {
+                                                             medicamentosAdapter = new MedicamentosAdapter(getApplicationContext(), medicamentosList);
+                                                             medicamentos_listview_List.setAdapter(medicamentosAdapter);
+                                                             Toast.makeText(MainActivity.this,"Medicamentos obtenidos.",Toast.LENGTH_SHORT).show();
 
-                        for (int i = 1; i < rows.size(); i++) { //first row is the col names so skip it.
-                            Element row = rows.get(i);
-                            Elements cols = row.select("td");
-                            Medicamento m = new Medicamento();
-                            m.setLaboratorio(cols.get(0).text());
-                            m.setNombre(cols.get(1).text());
-                            m.setPrecio_normal(cols.get(2).text());
-                            m.setDescuento(cols.get(3).text());
-                            m.setPrecio_rebajado(cols.get(4).text());
-                            medicamentosList.add(m);
+                                                         }
+                                                     });
 
-                        }
 
-                        medicamentosAdapter = new MedicamentosAdapter(getApplicationContext(),medicamentosList);
-                        medicamentos_listview_List.setAdapter(medicamentosAdapter);
 
                         Log.i("VOLLEY","TERMINE");
-
 
                     }
 
@@ -123,10 +122,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                 },getApplicationContext());
 
-                Toast.makeText(MainActivity.this,"Medicamentos obtenidos.",Toast.LENGTH_SHORT);
+
 
             }
-        }.run();
+        }).start();
 
         //Toast.makeText(getApplicationContext(),"Medicamentos obtenidos",Toast.LENGTH_SHORT).show();
         Log.i("MAIN",Integer.toString(medicamentosList.size()));
@@ -216,6 +215,58 @@ public class MainActivity extends AppCompatActivity {
                 .create();
         return myQuittingDialogBox;
 
+    }
+
+    public void setSwipeRefreshLayout() {
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                boolean is_connected = Connectivity.isConnected(getApplicationContext());
+                if (is_connected) {
+
+                            Toast.makeText(MainActivity.this, "Obteniendo medicamentos...", Toast.LENGTH_SHORT).show();
+
+
+                            VolleyGetElements.volleyGetElements(new VolleyStringCallback() {
+                                @Override
+                                public void onSuccess(String result) {
+                                    //mTextView.setText("Response is: "+ response);
+                                    final String finalResult = result;
+                                    new Thread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            VolleyGetElements.parseResponse(finalResult, medicamentosList);
+
+                                            mainActivity.runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    medicamentosAdapter = new MedicamentosAdapter(getApplicationContext(), medicamentosList);
+                                                    medicamentos_listview_List.setAdapter(medicamentosAdapter);
+                                                    Log.i("VOLLEY", "TERMINE");
+                                                    Toast.makeText(MainActivity.this, "Lista de medicamentos actualizada.", Toast.LENGTH_SHORT).show();
+                                                }
+                                            });
+
+                                        }
+                                    }).start();
+                                }
+
+                                @Override
+                                public void onErrorResponse(VolleyError result) {
+                                    //Toast.makeText(getApplicationContext(), "No se pudo cargar la lista", Toast.LENGTH_LONG).show();
+                                    Log.i("VOLLEY", "ERROR");
+
+
+                                }
+                            }, getApplicationContext());
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+                else {
+
+                }
+            }
+
+        });
     }
 
 }
