@@ -1,11 +1,16 @@
 package cl.uilabs.botiquindelascondes.models;
 
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.PrimaryKey;
+
 /**
  * Created by jose on 17-11-17.
  */
 
+@Entity
 public class Medicamento {
     private String laboratorio;
+    @PrimaryKey
     private String nombre;
     private String precio_normal;
     private String descuento;
